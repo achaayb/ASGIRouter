@@ -1,24 +1,23 @@
-from coreapi.core import CoreAPI
-from coreapi.request import Request
-from coreapi.response import JSONResponse
-from coreapi.connection import WebSocketConnection
+from coreapi import CoreAPI
+from coreapi import Request
+from coreapi import JSONResponse
+from coreapi import WebSocketConnection
 
 app = CoreAPI()
 
 @app.route(
     "/{hello}",
-    methods=["POST"]
+    methods=["GET", "POST"]
 )
 def hello_world(request: Request):
     hello = request.slugs["hello"]
-    response = JSONResponse(
-        data={"name": request.headers["foo"]}, status=200
-    )
-    response.set_header("Hello", "World")
-    return response
+    if request.method == "GET":
+        return JSONResponse(data={"Hello": hello}, status=200)
+    elif request.method == "POST":
+        return JSONResponse(data={"Hello": hello}, status=201)
 
 
-@app.ws("/")
+@app.ws("/ws")
 async def foo(connection: WebSocketConnection):
     await connection.accept()
     while True:

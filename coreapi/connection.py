@@ -1,9 +1,9 @@
+# connection.py
 from typing import Any
 
-
 class WebSocketConnection:
-    _receive: Any
-    _send: Any
+    receive: Any
+    send: Any
 
     path: str
     query: dict[str, str]
