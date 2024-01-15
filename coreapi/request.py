@@ -1,6 +1,7 @@
 # request.py
 import json
 
+
 class Request:
     path: str
     method: str

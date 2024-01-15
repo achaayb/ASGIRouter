@@ -1,20 +1,28 @@
 import re
-from pprint import pp
 from urllib.parse import parse_qs
 
 from coreapi.request import Request
 from coreapi.response import JSONResponse
 from coreapi.connection import WebSocketConnection
 
+from asyncio import (
+    get_event_loop,
+    iscoroutinefunction,
+    Future,
+)
+from concurrent.futures import ThreadPoolExecutor
+
+
 class CoreAPI:
-    def __init__(self: "CoreAPI", debug: bool = True):
+    def __init__(self: "CoreAPI", debug: bool = True, pool_size: int | None = None):
         self.debug = debug
         self._http_routes = []
         self._ws_routes = []
+        self._thread_pool = ThreadPoolExecutor(max_workers=pool_size)
+        self._loop = get_event_loop()
 
     # Exposed decorators
     def route(self, path, methods=None):
-
         if methods is None:
             methods = ["GET"]
 
@@ -22,11 +30,7 @@ class CoreAPI:
             path = path[:-1]
 
         def decorator(handler):
-            self._add_http_route(
-                path,
-                methods,
-                handler
-            )
+            self._add_http_route(path, methods, handler)
             return handler
 
         return decorator
@@ -44,18 +48,10 @@ class CoreAPI:
 
         return decorator
 
-    def _add_http_route(
-        self, path, methods, handler
-    ):
+    def _add_http_route(self, path, methods, handler):
         param_re = r"{([a-zA-Z_][a-zA-Z0-9_]*)}"
         path_re = r"^" + re.sub(param_re, r"(?P<\1>\\w+)", path) + r"$"
-        self._http_routes.append(
-            (
-                re.compile(path_re),
-                methods,
-                handler
-            )
-        )
+        self._http_routes.append((re.compile(path_re), methods, handler))
         return handler
 
     def _add_ws_route(self, path, handler):
@@ -77,11 +73,7 @@ class CoreAPI:
             path_info = path_info[:-1]
 
         request_method = scope["method"]
-        for (
-            path,
-            methods,
-            handler
-        ) in self._http_routes:
+        for path, methods, handler in self._http_routes:
             # Skip if invalid method
             if not request_method in methods:
                 continue
@@ -89,10 +81,7 @@ class CoreAPI:
             if m is not None:
                 # Extract and return parameter values
                 path_params = m.groupdict()
-                return {
-                    "path_params": path_params,
-                    "handler": handler
-                }
+                return {"path_params": path_params, "handler": handler}
 
     def _match_ws(self, scope):
         path_info = scope["path"]
@@ -175,13 +164,35 @@ class CoreAPI:
             }
         )
 
+    async def run_sync_handler_in_executor(self, handler, request):
+        # Submit the synchronous function to the thread pool
+        future = self._thread_pool.submit(handler, request)
+
+        # Create an asyncio Future to await the result
+        async_result = Future()
+
+        def callback(fut):
+            # Callback to set the result of the thread pool execution in the asyncio Future
+            if fut.cancelled():
+                async_result.cancel()
+            else:
+                try:
+                    result = fut.result()
+                    async_result.set_result(result)
+                except Exception as exc:
+                    async_result.set_exception(exc)
+
+        # Attach the callback to the thread pool future
+        future.add_done_callback(callback)
+
+        # Await the result of the thread pool execution using the asyncio Future
+        return await async_result
+
     async def _http_handler(self, scope, receive, send):
         # Match to http router and extract slugs
         match = self._match_http(scope)
         if match is None:
-            response = JSONResponse(
-                status=404, data={"message": "Resource not found"}
-            )
+            response = JSONResponse(status=404, data={"message": "Resource not found"})
             await self._http_response(response, send)
             return
 
@@ -205,9 +216,15 @@ class CoreAPI:
         request.query = query_params
         request.body = body
 
-
         # Prepare Response
-        handler_response = handler(request)
+        if iscoroutinefunction(handler):
+            handler_response = await handler(request)
+        else:
+            with self._thread_pool as executor:
+                # Run sync function in the threadpool
+                sync_future = self._loop.run_in_executor(executor, handler, request)
+                # Await the result without blocking the main event loop
+                handler_response = await sync_future
 
         # Check JSONResponse is returned
         if not isinstance(handler_response, JSONResponse):

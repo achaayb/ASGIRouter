@@ -1,6 +1,7 @@
 # connection.py
 from typing import Any
 
+
 class WebSocketConnection:
     receive: Any
     send: Any

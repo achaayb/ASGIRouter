@@ -1,20 +1,21 @@
+from coreapi import WebSocketConnection
+
 from coreapi import CoreAPI
 from coreapi import Request
 from coreapi import JSONResponse
-from coreapi import WebSocketConnection
+from time import sleep
+from asyncio import sleep as async_sleep
 
-app = CoreAPI()
+app = CoreAPI(pool_size=4)
 
-@app.route(
-    "/{hello}",
-    methods=["GET", "POST"]
-)
-def hello_world(request: Request):
-    hello = request.slugs["hello"]
-    if request.method == "GET":
-        return JSONResponse(data={"Hello": hello}, status=200)
-    elif request.method == "POST":
-        return JSONResponse(data={"Hello": hello}, status=201)
+@app.route("/foo")
+def sync_controller(request):
+    sleep(1)
+    return JSONResponse({"type": "sync"})
+
+@app.route("/async")
+async def async_controller(request):
+    return JSONResponse({"type": "async"})
 
 
 @app.ws("/ws")
