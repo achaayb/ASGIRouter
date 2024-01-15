@@ -4,12 +4,18 @@ Core is a high-performance lightweight framework for building API's in python wi
 
 The idea of CoreAPI is to be extended and customised based on your needs
 
-Features:
-- ASGI compliant
-- Decorator Routing
-- Url and Params parsing
-- Request object incapsulation
-- Websocket support
+Refactored Features:
+- **ASGI Compliance:** The framework is designed to be ASGI compliant, ensuring compatibility with asynchronous web servers.
+  
+- **Decorator Routing:** Simplify your code structure with decorator-based routing, making it more intuitive and modular.
+
+- **URL and Params Parsing:** Efficient handling of URL parsing and parameter extraction for cleaner and more organized route definitions.
+
+- **Request Object Encapsulation:** Request handling is encapsulated within a dedicated object, promoting better code organization and readability.
+
+- **Websocket Support:** Native support for WebSockets, enabling real-time communication and interaction with clients.
+
+- **Thread Pool Execution for Sync Routes:** Enhance performance by utilizing a thread pool for synchronous route execution, ensuring responsiveness even for blocking operations.
 
 ```py
 # Example app
