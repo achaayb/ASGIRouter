@@ -4,7 +4,7 @@ Core is a high-performance lightweight framework for building API's in python wi
 
 The idea of CoreAPI is to be extended and customised based on your needs
 
-Refactored Features:
+**Features**:
 - **ASGI Compliance:** The framework is designed to be ASGI compliant, ensuring compatibility with asynchronous web servers.
   
 - **Decorator Routing:** Simplify your code structure with decorator-based routing, making it more intuitive and modular.
