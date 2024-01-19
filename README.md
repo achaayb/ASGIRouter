@@ -4,36 +4,40 @@ Core is a high-performance lightweight framework for building API's in python wi
 
 The idea of CoreAPI is to be extended and customised based on your needs
 
-Features:
-- ASGI compliant
-- Decorator Routing
-- Url and Params parsing
-- Request object incapsulation
-- Websocket support
+**Features**:
+- **ASGI Compliance:** The framework is designed to be ASGI compliant, ensuring compatibility with asynchronous web servers.
+  
+- **Decorator Routing:** Simplify your code structure with decorator-based routing, making it more intuitive and modular.
+
+- **URL and Params Parsing:** Efficient handling of URL parsing and parameter extraction for cleaner and more organized route definitions.
+
+- **Request Object Encapsulation:** Request handling is encapsulated within a dedicated object, promoting better code organization and readability.
+
+- **Websocket Support:** Native support for WebSockets, enabling real-time communication and interaction with clients.
+
+- **Thread Pool Execution for Sync Routes:** Enhance performance by utilizing a thread pool for synchronous route execution, ensuring responsiveness even for blocking operations.
 
 ```py
-# Example app
 from coreapi import CoreAPI
 from coreapi import Request
 from coreapi import JSONResponse
 from coreapi import WebSocketConnection
+from time import sleep
 
-app = CoreAPI()
+app = CoreAPI(pool_size=4)
 
-@app.route(
-    "/{hello}",
-    methods=["GET", "POST"]
-)
-def hello_world(request: Request):
-    hello = request.slugs["hello"]
-    if request.method == "GET":
-        return JSONResponse(data={"Hello": hello}, status=200)
-    elif request.method == "POST":
-        return JSONResponse(data={"Hello": hello}, status=201)
+@app.route("/foo")
+def sync_controller(request: Request) -> JSONResponse:
+    sleep(1)
+    return JSONResponse({"type": "sync"})
+
+@app.route("/async")
+async def async_controller(request: Request) -> JSONResponse:
+    return JSONResponse({"type": "async"})
 
 
 @app.ws("/ws")
-async def foo(connection: WebSocketConnection):
+async def foo(connection: WebSocketConnection) -> None:
     await connection.accept()
     while True:
         message = await connection.receive_message()
