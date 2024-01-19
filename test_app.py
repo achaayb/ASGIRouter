@@ -1,16 +1,15 @@
-from coreapi import WebSocketConnection
-
-from coreapi import CoreAPI
-from coreapi import Request
-from coreapi import JSONResponse
 from time import sleep
 
-app = CoreAPI(pool_size=4)
+from coreapi import CoreAPI, JSONResponse, Request, WebSocketConnection
+
+app = CoreAPI()
+
 
 @app.route("/foo")
 def sync_controller(request: Request) -> JSONResponse:
     sleep(1)
     return JSONResponse({"type": "sync"})
+
 
 @app.route("/async")
 async def async_controller(request: Request) -> JSONResponse:
