@@ -1,8 +1,10 @@
 # request.py
 import json
+from typing import Any
 
 
 class Request:
+    proto: Any
     path: str
     method: str
     headers: dict[str, str]

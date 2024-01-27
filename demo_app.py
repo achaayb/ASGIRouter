@@ -1,32 +1,3 @@
-# CoreAPI
-
-CoreAPI is a high-performance lightweight framework for building API's in python with no extra dependencies and and runs on RSGI
-
-RSGI i a Rust HTTP server interface for Python
-
-**Features**:
-- **RSGI Compliance:** The framework is designed to be RSGI compliant insuring better performance over ASGI.
-  
-- **Decorator Routing:** Simplify your code structure with decorator-based routing, making it more intuitive and modular.
-
-- **URL and Params Parsing:** Efficient handling of URL parsing and parameter extraction for cleaner and more organized route definitions.
-
-- **Request Object Encapsulation:** Request handling is encapsulated within a dedicated object, promoting better code organization and readability.
-
-- **Websocket Support:** Native support for WebSockets, enabling real-time communication and interaction with clients.
-
-- **Thread Pool Execution for Sync Routes:** Enhance performance by utilizing a thread pool for synchronous route execution, ensuring responsiveness even for blocking operations.
-
-#### Requirements
-> CoreAPI Has no requirements.
-#### Running CoreAPI
-> sudo apt install granian
-
-> granian --log --interface rsgi demo_app:app
-
-
-#### Demos
-```py
 from time import sleep
 
 from coreapi import (
@@ -98,7 +69,3 @@ async def web_socket(connection: WebSocketConnection) -> None:
             await connection.close()
             return
         await connection.send(message.data)
-```
-
-#### More about RSGI and Granian
-Granian [Github](https://github.com/emmett-framework/granian).

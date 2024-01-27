@@ -8,7 +8,7 @@ class JSONResponse:
         self,
         data: Union[Dict[str, Any], list[Dict[str, Any]]] = None,
         status: str = 200,
-        headers: dict[str, str] = [("Content-Type", "application/json")],
+        headers: list[tuple[str, str]] = [("Content-Type", "application/json")],
     ):
         self.data = data
         self.status = status
@@ -28,9 +28,18 @@ class JSONResponse:
     @property
     def body(self) -> bytes:
         if self.data is None:
-            return b"{}"
+            return "{}"
         elif isinstance(self.data, (dict, list)):
-            return json.dumps(self.data).encode()
+            return json.dumps(self.data)
+        else:
+            raise TypeError("Invalide response data type")
+
+    @property
+    def body(self) -> bytes:
+        if self.data is None:
+            return "{}"
+        elif isinstance(self.data, (dict, list)):
+            return json.dumps(self.data)
         else:
             raise TypeError("Invalide response data type")
 

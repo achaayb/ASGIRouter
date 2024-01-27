@@ -1,6 +1,5 @@
 import re
-from asyncio import Future, get_event_loop, iscoroutinefunction
-from concurrent.futures import ThreadPoolExecutor
+from asyncio import get_event_loop, iscoroutinefunction
 from urllib.parse import parse_qs
 
 from coreapi.connection import WebSocketConnection
@@ -60,12 +59,12 @@ class CoreAPI:
 
     # Match path to handler + exctract slugs
     def _match_http(self, scope):
-        path_info = scope["path"]
+        path_info = scope.path
         # Remove trailing slash
         if path_info.endswith("/"):
             path_info = path_info[:-1]
 
-        request_method = scope["method"]
+        request_method = scope.method
         for path, methods, handler in self._http_routes:
             # Skip if invalid method
             if request_method not in methods:
@@ -77,7 +76,7 @@ class CoreAPI:
                 return {"path_params": path_params, "handler": handler}
 
     def _match_ws(self, scope):
-        path_info = scope["path"]
+        path_info = scope.path
         # Remove trailing slash
         if path_info.endswith("/"):
             path_info = path_info[:-1]
@@ -97,7 +96,7 @@ class CoreAPI:
 
     # Parsers
     def _parse_qs(self, scope):
-        query_string = scope["query_string"]
+        query_string = scope.query_string
         if not query_string:
             return {}
         parsed = parse_qs(query_string)
@@ -107,19 +106,14 @@ class CoreAPI:
 
     def _parse_headers(self, scope):
         headers = dict()
-        for header in scope["headers"]:
-            headers[header[0].decode("utf-8")] = header[1].decode("utf-8")
+        for header in scope.headers.items():
+            headers[header[0]] = header[1]
         return headers
 
     # Body readers
-    async def _read_http_body(self, receive):
-        body = bytearray()
-        while True:
-            msg = await receive()
-            body += msg["body"]
-            if not msg.get("more_body"):
-                break
-        return bytes(body)
+    async def _read_http_body(self, proto):
+        msg = await proto()
+        return bytes(msg)
 
     def _validate_http_request(self, request: Request, compiled_request_schema):
         request_validation_errors = []
@@ -142,27 +136,17 @@ class CoreAPI:
                 response_validation_errors.append(error.message)
         return response_validation_errors
 
-    async def _http_response(self, response, send):
-        await send(
-            {
-                "type": "http.response.start",
-                "status": response.status,
-                "headers": [(k.encode(), v.encode()) for k, v in response.headers],
-            }
-        )
-        await send(
-            {
-                "type": "http.response.body",
-                "body": response.body,
-            }
+    async def _http_response(self, response, proto):
+        proto.response_str(
+            status=response.status, headers=response.headers, body=response.body
         )
 
-    async def _http_handler(self, scope, receive, send):
+    async def _http_handler(self, scope, proto):
         # Match to http router and extract slugs
         match = self._match_http(scope)
         if match is None:
             response = JSONResponse(status=404, data={"message": "Resource not found"})
-            await self._http_response(response, send)
+            await self._http_response(response, proto)
             return
 
         path_params = match["path_params"]
@@ -171,13 +155,14 @@ class CoreAPI:
         # Parse request dependencies
         headers = self._parse_headers(scope)
         query_params = self._parse_qs(scope)
-        body = await self._read_http_body(receive)
+        body = await self._read_http_body(proto)
 
         # Prepare Request object
-        path_info = scope["path"]
-        request_method = scope["method"]
+        path_info = scope.path
+        request_method = scope.method
 
         request = Request()
+        request.proto = proto
         request.headers = headers
         request.method = request_method
         request.path = path_info
@@ -199,33 +184,33 @@ class CoreAPI:
             raise ValueError("Invalid response object")
 
         # Flow success
-        await self._http_response(handler_response, send)
+        await self._http_response(handler_response, proto)
 
-    async def _ws_handler(self, scope, receive, send):
+    async def _ws_handler(self, scope, proto):
         # Match to ws router and extract slugs
         match = self._match_ws(scope)
         if match is None:
-            await send({"type": "websocket.close", "code": 1000})
+            proto.close(404)
+            return
 
         path_params = match["path_params"]
         handler = match["handler"]
 
         # Parse ws connection dependencies
+        headers = self._parse_headers(scope)
         query_params = self._parse_qs(scope)
 
         # prepare websocket connection object
         connection = WebSocketConnection()
-        connection.receive = receive
-        connection.send = send
-        connection.path = scope["path"]
+        connection.proto = proto
+        connection.headers = headers
+        connection.proto = proto
         connection.query = query_params
         connection.slugs = path_params
         await handler(connection)
 
-    async def __call__(self, scope, receive, send):
-        if scope["type"] == "http":
-            await self._http_handler(scope, receive, send)
-        elif scope["type"] == "lifespan":
-            await self.lifespan_handler(scope, receive, send)
-        elif scope["type"] == "websocket":
-            await self._ws_handler(scope, receive, send)
+    async def __call__(self, scope, proto):
+        if scope.proto == "http":
+            await self._http_handler(scope, proto)
+        elif scope.proto == "ws":
+            await self._ws_handler(scope, proto)
