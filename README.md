@@ -31,14 +31,11 @@ CoreAPI is a high-performance RSGI lightweight framework for building API's in p
 ```py
 from time import sleep
 
-from coreapi import (
-    CoreAPI,
-    JSONResponse,
-    Request,
-    WebSocketClosedByClient,
-    WebSocketConnection,
-    WebSocketMessage,
-)
+from pycoreapi import CoreAPI
+from pycoreapi.response import JSONResponse
+from pycoreapi.request import Request
+from pycoreapi.exceptions import WebSocketClosedByClient
+from pycoreapi.connection import WebSocketConnection, WebSocketMessage
 
 app = CoreAPI()
 
@@ -100,6 +97,7 @@ async def web_socket(connection: WebSocketConnection) -> None:
             await connection.close()
             return
         await connection.send(message.data)
+
 ```
 
 #### More about RSGI and Granian
