@@ -18,8 +18,9 @@ CoreAPI is a high-performance RSGI lightweight framework for building API's in p
 
 - **Thread Pool Execution for Sync Routes:** Enhance performance by utilizing a thread pool for synchronous route execution, ensuring responsiveness even for blocking operations.
 
-#### Requirements
+#### Installing CoreAPI
 > CoreAPI Has no requirements.
+> pip3 install pycoreapi
 #### Running CoreAPI
 > sudo apt install granian
 

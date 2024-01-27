@@ -2,9 +2,9 @@ import re
 from asyncio import get_event_loop, iscoroutinefunction
 from urllib.parse import parse_qs
 
-from coreapi.connection import WebSocketConnection
-from coreapi.request import Request
-from coreapi.response import JSONResponse
+from pycoreapi.connection import WebSocketConnection
+from pycoreapi.request import Request
+from pycoreapi.response import JSONResponse
 
 
 class CoreAPI:

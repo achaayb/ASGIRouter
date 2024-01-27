@@ -8,7 +8,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+build
 develop-eggs/
 dist/
 downloads/
@@ -17,7 +17,9 @@ eggs/
 lib/
 lib64/
 parts/
-sdist/
+sdist
+bdist_wheel
+my_package_egg-info
 var/
 wheels/
 share/python-wheels/

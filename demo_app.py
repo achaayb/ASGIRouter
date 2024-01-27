@@ -1,13 +1,10 @@
 from time import sleep
 
-from coreapi import (
-    CoreAPI,
-    JSONResponse,
-    Request,
-    WebSocketClosedByClient,
-    WebSocketConnection,
-    WebSocketMessage,
-)
+from pycoreapi import CoreAPI
+from pycoreapi.response import JSONResponse
+from pycoreapi.request import Request
+from pycoreapi.exceptions import WebSocketClosedByClient
+from pycoreapi.connection import WebSocketConnection, WebSocketMessage
 
 app = CoreAPI()
 

@@ -2,7 +2,7 @@
 from enum import Enum
 from typing import Any, Union
 
-from coreapi.exceptions import WebSocketClosedByClient
+from pycoreapi.exceptions import WebSocketClosedByClient
 
 
 class WebsocketMessageType(int, Enum):
