@@ -1,8 +1,9 @@
 # CoreAPI
 
-CoreAPI is a high-performance lightweight framework for building API's in python with no extra dependencies and and runs on RSGI
+CoreAPI is a high-performance RSGI lightweight framework for building API's in python with no requirements
 
-RSGI i a Rust HTTP server interface for Python
+#### RSGI?
+> RSGI i a Rust HTTP server interface for Python
 
 **Features**:
 - **RSGI Compliance:** The framework is designed to be RSGI compliant insuring better performance over ASGI.
