@@ -52,6 +52,31 @@ def sync_controller(request: Request) -> JSONResponse:
 async def async_controller(request: Request) -> JSONResponse:
     return JSONResponse({"type": "async"})
 
+# Validation demo
+# Requires pycoreapi[pydantic]
+from pydantic import BaseModel
+from pycoreapi.validators import Validator
+# Import the Validator class
+class Validation(Validator):
+    # Create pydantic validation classes
+    class Headers(BaseModel):
+        foo: str
+
+    class Query(BaseModel):
+        foo: str
+
+    class Body(BaseModel):
+        foo: int
+
+    # Overwrite headers, body, query with validation classes
+    headers: Headers
+    body: Body
+    query: Query
+
+# Use the Validation Class as a request_validator
+@app.route("/validation", request_validator=Validation)
+async def validatipn_controller(request: Request) -> JSONResponse:
+    return JSONResponse({"type": request.dict})
 
 # Methods demo
 @app.route("/methods", methods=["GET", "POST"])
@@ -97,7 +122,6 @@ async def web_socket(connection: WebSocketConnection) -> None:
             await connection.close()
             return
         await connection.send(message.data)
-
 ```
 
 #### More about RSGI and Granian
