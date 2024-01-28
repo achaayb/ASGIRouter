@@ -12,5 +12,7 @@ setup(
     install_requires=[
         # Add your dependencies here
     ],
-    # Add other metadata
+    extras_require={
+        'pydantic': ['pydantic']
+    }
 )

@@ -20,6 +20,8 @@ class Request:
     def json(self) -> object:
         if not self.body:
             return {}
+        if isinstance(self.body, dict):
+            return self.body
         return json.loads(self.body)
 
     @property
@@ -30,5 +32,13 @@ class Request:
             "headers": self.headers,
             "query": self.query,
             "slugs": self.slugs,
-            "body": self.text,
+            "body": self.json,
+        }
+    
+    @property
+    def dict_minified(self) -> object:
+        return {
+            "headers": self.headers,
+            "query": self.query,
+            "body": self.json,
         }

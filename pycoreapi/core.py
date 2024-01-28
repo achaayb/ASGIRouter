@@ -5,7 +5,14 @@ from urllib.parse import parse_qs
 from pycoreapi.connection import WebSocketConnection
 from pycoreapi.request import Request
 from pycoreapi.response import JSONResponse
+from pycoreapi.utils import is_extra_installed
 
+import json
+
+
+pydantic_installed = is_extra_installed("pydantic")
+if pydantic_installed:
+    from pydantic import BaseModel, ValidationError
 
 class CoreAPI:
     def __init__(self: "CoreAPI"):
@@ -14,7 +21,18 @@ class CoreAPI:
         self._loop = get_event_loop()
 
     # Exposed decorators
-    def route(self, path, methods=None):
+    def route(self, path, methods=None, request_validator=None):
+
+        # Check if Pydantic is installed if a request validator is provided
+        if request_validator and not pydantic_installed:
+            raise Exception(
+                "request_validator requires Pydantic. Install it using: pip3 install pycoreapy[pydantic]"
+            )
+
+        # Check if the provided request validator is a subclass of BaseModel
+        if request_validator and not issubclass(request_validator, BaseModel):
+            raise Exception("request_validator must be a subclass of pydantic BaseModel")
+
         if methods is None:
             methods = ["GET"]
 
@@ -22,7 +40,7 @@ class CoreAPI:
             path = path[:-1]
 
         def decorator(handler):
-            self._add_http_route(path, methods, handler)
+            self._add_http_route(path, methods, handler, request_validator)
             return handler
 
         return decorator
@@ -40,10 +58,10 @@ class CoreAPI:
 
         return decorator
 
-    def _add_http_route(self, path, methods, handler):
+    def _add_http_route(self, path, methods, handler, request_validator):
         param_re = r"{([a-zA-Z_][a-zA-Z0-9_]*)}"
         path_re = r"^" + re.sub(param_re, r"(?P<\1>\\w+)", path) + r"$"
-        self._http_routes.append((re.compile(path_re), methods, handler))
+        self._http_routes.append((re.compile(path_re), methods, handler, request_validator))
         return handler
 
     def _add_ws_route(self, path, handler):
@@ -65,7 +83,7 @@ class CoreAPI:
             path_info = path_info[:-1]
 
         request_method = scope.method
-        for path, methods, handler in self._http_routes:
+        for path, methods, handler, request_validator in self._http_routes:
             # Skip if invalid method
             if request_method not in methods:
                 continue
@@ -73,7 +91,7 @@ class CoreAPI:
             if m is not None:
                 # Extract and return parameter values
                 path_params = m.groupdict()
-                return {"path_params": path_params, "handler": handler}
+                return {"path_params": path_params, "handler": handler, "request_validator": request_validator}
 
     def _match_ws(self, scope):
         path_info = scope.path
@@ -114,27 +132,33 @@ class CoreAPI:
     async def _read_http_body(self, proto):
         msg = await proto()
         return bytes(msg)
-
-    def _validate_http_request(self, request: Request, compiled_request_schema):
-        request_validation_errors = []
-        # Validate request is a json
+    
+    # Validate and parse
+    async def _validate(self, request, request_validator, proto):
+        # Overwrites request object
         try:
-            request.json
-        except ValueError:
-            return ["Invalid request body"]
-        # Validate request json
-        if compiled_request_schema:
-            for error in compiled_request_schema.iter_errors(request.json):
-                request_validation_errors.append(error.message)
-        return request_validation_errors
+            body_headers_query_dict = request.dict_minified
+            validated_request = request_validator(
+                **body_headers_query_dict
+            )
+            request.headers = validated_request.headers.dict()
+            request.body = validated_request.body.dict()
+            request.query = validated_request.query.dict()
+        except json.JSONDecodeError as e:
+            # Body to json failed
+            response = JSONResponse(
+                status=400,
+                data={"error": "Parsing Error", "details": "Invalid Json body"}
+            )
+            await self._http_response(response, proto)
+        except ValidationError as e:
+            # Handle validation errors
+            response = JSONResponse(
+                status=400,
+                data={"error": "Validation Error", "details": e.errors()}
+            )
+            await self._http_response(response, proto)
 
-    def _validate_http_response(self, response: JSONResponse, compiled_response_schema):
-        response_validation_errors = []
-        # Validate request json
-        if compiled_response_schema:
-            for error in compiled_response_schema.iter_errors(response.data):
-                response_validation_errors.append(error.message)
-        return response_validation_errors
 
     async def _http_response(self, response, proto):
         proto.response_str(
@@ -151,11 +175,13 @@ class CoreAPI:
 
         path_params = match["path_params"]
         handler = match["handler"]
+        request_validator = match["request_validator"]
 
         # Parse request dependencies
         headers = self._parse_headers(scope)
         query_params = self._parse_qs(scope)
         body = await self._read_http_body(proto)
+
 
         # Prepare Request object
         path_info = scope.path
@@ -169,6 +195,11 @@ class CoreAPI:
         request.slugs = path_params
         request.query = query_params
         request.body = body
+
+        # Validate request
+        # Warning: overwrites initial request object
+        if request_validator and pydantic_installed:
+            await self._validate(request, request_validator, proto)
 
         # Prepare Response
         if iscoroutinefunction(handler):
